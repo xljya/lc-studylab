@@ -128,6 +128,30 @@ class Settings(BaseSettings):
         default="data",
         description="数据存储根目录"
     )
+
+    database_path: str = Field(
+        default="data/app.db",
+        description="SQLite 数据库文件路径"
+    )
+
+    jwt_secret_key: str = Field(
+        default="lc-studylab-dev-secret-change-me",
+        description="JWT 签名密钥，生产环境必须覆盖"
+    )
+
+    auth_access_token_expire_minutes: int = Field(
+        default=60 * 24,
+        ge=5,
+        le=60 * 24 * 30,
+        description="访问令牌有效期（分钟）"
+    )
+
+    auth_password_min_length: int = Field(
+        default=8,
+        ge=6,
+        le=128,
+        description="用户密码最小长度"
+    )
     
     # ==================== Agent 配置 ====================
     agent_max_iterations: int = Field(
@@ -307,4 +331,3 @@ import sys
 if "pytest" not in sys.modules:
     # 延迟验证，允许在导入后再设置环境变量
     pass
-

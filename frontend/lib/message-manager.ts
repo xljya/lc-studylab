@@ -14,6 +14,7 @@ import type {
   ContextUsage,
   Citation,
   ChainOfThought,
+  JsonValue,
 } from './types';
 
 export class MessageManager {
@@ -264,7 +265,7 @@ export class MessageManager {
   /**
    * 设置/合并 metadata
    */
-  setMetadata(id: string, updates: Record<string, any>): void {
+  setMetadata(id: string, updates: Record<string, JsonValue | undefined>): void {
     const message = this.messages.get(id);
     if (message) {
       if (!message.metadata) {
@@ -348,15 +349,22 @@ export class MessageManager {
    */
   fromJSON(json: string): void {
     try {
-      const data = JSON.parse(json);
+      const data: unknown = JSON.parse(json);
       if (Array.isArray(data)) {
         this.messages.clear();
-        data.forEach((msg: any) => {
+        data.forEach((rawMessage) => {
+          if (!rawMessage || typeof rawMessage !== 'object') {
+            return;
+          }
+
+          const msg = rawMessage as EnhancedMessage & { timestamp?: string | Date };
           // 转换日期字符串为 Date 对象
           if (msg.timestamp) {
             msg.timestamp = new Date(msg.timestamp);
           }
-          this.messages.set(msg.id, msg);
+          if (typeof msg.id === 'string') {
+            this.messages.set(msg.id, msg as EnhancedMessage);
+          }
         });
         this.notify();
       }

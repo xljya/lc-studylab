@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
+# 在构建阶段注入公开环境变量，避免客户端 bundle 使用错误的默认地址
+ARG NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # 安装 pnpm
 RUN npm install -g pnpm
 
@@ -47,8 +51,8 @@ EXPOSE 3000
 
 # 设置环境变量
 ENV PORT=3000 \
-    HOSTNAME="0.0.0.0"
+    HOSTNAME="0.0.0.0" \
+    NEXT_PUBLIC_API_URL=/api
 
 # 启动命令（standalone 模式下的启动文件）
 CMD ["node", "server.js"]
-

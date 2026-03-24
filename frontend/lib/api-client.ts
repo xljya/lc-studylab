@@ -2,10 +2,37 @@
  * API 客户端 - 封装对 Python 后端的 HTTP 调用
  */
 
-import { ChatRequest, ChatResponse, AgentMode } from './types';
+import {
+  AuthResponse,
+  AuthUser,
+  ChatRequest,
+  ChatResponse,
+  CreateInterviewKitRequest,
+  InterviewKit,
+  InterviewKitSummary,
+  InterviewStats,
+  LoginRequest,
+  RegisterRequest,
+} from './types';
 
 // 后端 API 基础 URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const AUTH_TOKEN_KEY = 'lc-studylab-access-token';
+
+export function getStoredAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setStoredAccessToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearStoredAccessToken(): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(AUTH_TOKEN_KEY);
+}
 
 /**
  * 通用请求函数
@@ -15,18 +42,41 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const authToken = getStoredAccessToken();
   
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...options.headers,
     },
   });
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Unknown error', detail: undefined, message: undefined }));
+
+    if (response.status === 401) {
+      clearStoredAccessToken();
+    }
+
+    const detailMessage = Array.isArray(error.detail)
+      ? error.detail
+          .map((item: { loc?: unknown[]; msg?: string }) => {
+            const field = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : '';
+            return `${field ? `${String(field)}: ` : ''}${item.msg || '请求参数错误'}`;
+          })
+          .join('；')
+      : error.detail;
+
+    throw new Error(
+      detailMessage ||
+      error.message ||
+      error.error ||
+      `HTTP ${response.status}: ${response.statusText}`
+    );
   }
   
   return response.json();
@@ -61,7 +111,7 @@ export async function chatStream(chatRequest: ChatRequest): Promise<Response> {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+    throw new Error(error.detail || error.message || error.error || `HTTP ${response.status}: ${response.statusText}`);
   }
   
   return response;
@@ -113,7 +163,7 @@ export async function startWorkflow(params: {
 export async function getWorkflowStatus(threadId: string): Promise<{
   status: string;
   currentNode: string;
-  history: any[];
+  history: Array<Record<string, unknown>>;
 }> {
   return request(`/workflow/status/${threadId}`, {
     method: 'GET',
@@ -155,3 +205,83 @@ export async function healthCheck(): Promise<{ status: string; version: string }
   });
 }
 
+/**
+ * AI 面试助手 - 获取准备包列表
+ */
+export async function listInterviewKits(): Promise<InterviewKitSummary[]> {
+  return request('/interview/kits', {
+    method: 'GET',
+  });
+}
+
+/**
+ * AI 面试助手 - 获取准备包详情
+ */
+export async function getInterviewKit(kitId: string): Promise<InterviewKit> {
+  return request(`/interview/kits/${kitId}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * AI 面试助手 - 生成新的准备包
+ */
+export async function createInterviewKit(
+  params: CreateInterviewKitRequest
+): Promise<InterviewKit> {
+  return request('/interview/kits', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * AI 面试助手 - 删除准备包
+ */
+export async function deleteInterviewKit(kitId: string): Promise<{ success: boolean }> {
+  return request(`/interview/kits/${kitId}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * AI 面试助手 - 获取统计信息
+ */
+export async function getInterviewStats(): Promise<InterviewStats> {
+  return request('/interview/stats', {
+    method: 'GET',
+  });
+}
+
+/**
+ * Auth API - 注册
+ */
+export async function registerUser(params: RegisterRequest): Promise<AuthResponse> {
+  const result = await request<AuthResponse>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  setStoredAccessToken(result.access_token);
+  return result;
+}
+
+/**
+ * Auth API - 登录
+ */
+export async function loginUser(params: LoginRequest): Promise<AuthResponse> {
+  const result = await request<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+  setStoredAccessToken(result.access_token);
+  return result;
+}
+
+/**
+ * Auth API - 获取当前用户
+ */
+export async function getCurrentUser(): Promise<AuthUser> {
+  return request<AuthUser>('/auth/me', {
+    method: 'GET',
+  });
+}

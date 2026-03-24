@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Session, AgentMode } from '@/lib/types';
 import {
   getCurrentSession,
@@ -27,18 +27,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [currentSession, setCurrentSessionState] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
 
-  // 初始化：加载会话列表和当前会话
-  useEffect(() => {
-    refreshSessions();
-  }, []);
-
-  const refreshSessions = () => {
+  const refreshSessions = useCallback(() => {
     const allSessions = getSessions();
     setSessions(allSessions);
     
     const current = getCurrentSession();
     setCurrentSessionState(current);
-  };
+  }, []);
+
+  // 初始化：加载会话列表和当前会话
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      refreshSessions();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [refreshSessions]);
 
   const createNewSession = (mode: AgentMode, title?: string): Session => {
     const session = createSession(mode, title);
@@ -87,4 +91,3 @@ export function useSession() {
   }
   return context;
 }
-

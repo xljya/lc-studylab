@@ -9,7 +9,7 @@ services:
     env_file:
       - ./backend/.env
     ports:
-      - "${BACKEND_HOST_PORT:-8001}:8000"
+      - "${BACKEND_BIND_HOST:-127.0.0.1}:${BACKEND_HOST_PORT:-8001}:8000"
     environment:
       # 服务器配置
       - SERVER_HOST=0.0.0.0
@@ -35,13 +35,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
     container_name: lc-studylab-frontend
     ports:
-      - "${FRONTEND_HOST_PORT:-3000}:3000"
+      - "${FRONTEND_BIND_HOST:-127.0.0.1}:${FRONTEND_HOST_PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      # 浏览器通过宿主机端口访问后端，容器内部通过服务名访问后端
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8001}
+      # 浏览器走同域 /api，由 Nginx 反代到后端
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
       - BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL:-http://backend:8000}
     depends_on:
       backend:

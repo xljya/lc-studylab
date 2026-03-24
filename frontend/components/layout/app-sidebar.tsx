@@ -10,12 +10,12 @@ import {
   Search,
   Settings,
   Plus,
+  BriefcaseBusiness,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useSession } from "@/providers/session-provider"
-import { AgentMode } from "@/lib/types"
 import { getModeLabel } from "@/lib/session"
 
 const routes = [
@@ -44,6 +44,12 @@ const routes = [
     color: "text-emerald-500",
   },
   {
+    label: "AI 面试助手",
+    icon: BriefcaseBusiness,
+    href: "/interview",
+    color: "text-sky-600",
+  },
+  {
     label: "设置",
     icon: Settings,
     href: "/settings",
@@ -56,7 +62,7 @@ export function AppSidebar() {
   const { sessions, createNewSession, switchSession, currentSession } = useSession()
 
   const handleNewChat = () => {
-    const newSession = createNewSession('basic-agent')
+    createNewSession('basic-agent')
     // 导航到 chat 页面会在 chat 页面组件中处理
   }
 
@@ -137,4 +143,3 @@ export function AppSidebar() {
     </div>
   )
 }
-

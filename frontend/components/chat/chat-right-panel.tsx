@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge"
 
 interface ChatRightPanelProps {
   metadata?: MessageMetadata
-  rawJson?: any
+  rawJson?: unknown
 }
 
 export function ChatRightPanel({ metadata, rawJson }: ChatRightPanelProps) {
@@ -168,4 +168,3 @@ function EmptyState({ message }: { message: string }) {
     </div>
   )
 }
-

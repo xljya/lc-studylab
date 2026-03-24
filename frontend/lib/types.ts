@@ -5,13 +5,20 @@
 
 import type { ToolUIPart } from "ai";
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
+
 // 后端模式类型
 export type AgentMode =
   | "basic-agent"
   | "rag"
   | "workflow"
   | "deep-research"
-  | "guarded";
+  | "guarded"
+  | "interview";
 
 // 会话类型
 export interface Session {
@@ -245,4 +252,113 @@ export interface AppConfig {
   defaultModel: ModelConfig;
   enableGuardrails: boolean;
   streamingEnabled: boolean;
+}
+
+export interface InterviewQuestion {
+  question: string;
+  intent: string;
+  answer_tips: string[];
+}
+
+export interface PreparationTask {
+  title: string;
+  why: string;
+  action: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface InterviewKitSummary {
+  id: string;
+  created_at: string;
+  candidate_name?: string | null;
+  target_role: string;
+  company_name?: string | null;
+  role_fit_score: number;
+  summary: string;
+  strengths: string[];
+}
+
+export interface InterviewKit extends InterviewKitSummary {
+  resume_text: string;
+  job_description: string;
+  focus_areas: string[];
+  risks: string[];
+  focus_points: string[];
+  self_intro: string;
+  project_story: string;
+  likely_questions: InterviewQuestion[];
+  prep_plan: PreparationTask[];
+  suggested_followups: string[];
+  metrics?: {
+    model_id: string;
+    generation_ms: number;
+    input_chars: number;
+    output_chars: number;
+    input_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    cached_input_tokens: number;
+    total_tokens: number;
+    estimated_cost_usd: number;
+  };
+}
+
+export interface CreateInterviewKitRequest {
+  candidate_name?: string;
+  target_role: string;
+  company_name?: string;
+  resume_text: string;
+  job_description: string;
+  model_id?: "gpt-4o" | "gpt-4o-mini" | "deepseek-chat" | "deepseek-reasoner";
+  focus_areas?: string[];
+}
+
+export interface CountStat {
+  label: string;
+  count: number;
+}
+
+export interface DailyInterviewStat {
+  date: string;
+  count: number;
+  average_score: number;
+}
+
+export interface InterviewStats {
+  total_kits: number;
+  average_role_fit_score: number;
+  high_fit_count: number;
+  recent_7d_count: number;
+  average_generation_ms: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_estimated_cost_usd: number;
+  top_focus_areas: CountStat[];
+  top_target_roles: CountStat[];
+  recent_activity: DailyInterviewStat[];
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  display_name?: string | null;
+  created_at: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  display_name?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: "bearer";
+  expires_in: number;
+  user: AuthUser;
 }

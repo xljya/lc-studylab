@@ -25,7 +25,8 @@ from contextlib import asynccontextmanager
 import time
 
 from config import settings, setup_logging, get_logger
-from api.routers import chat, rag, workflow, deep_research
+from api.routers import auth, chat, rag, workflow, deep_research, interview
+from core.database import init_database
 
 # 初始化日志
 setup_logging()
@@ -50,6 +51,10 @@ async def lifespan(app: FastAPI):
         logger.info("✅ 配置验证通过")
     except ValueError as e:
         logger.warning(f"⚠️  配置警告: {e}")
+
+    # 初始化数据库
+    init_database()
+    logger.info(f"✅ SQLite 数据库已就绪: {settings.database_path}")
     
     # 打印配置信息
     logger.info(f"📊 运行环境:")
@@ -167,6 +172,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 # 注册聊天路由
 app.include_router(chat.router)
 
+# 注册认证路由
+app.include_router(auth.router)
+
 # 注册 RAG 路由
 app.include_router(rag.router)
 
@@ -175,6 +183,9 @@ app.include_router(workflow.router)
 
 # 注册深度研究路由（第 4 阶段）
 app.include_router(deep_research.router)
+
+# 注册 AI 面试助手路由
+app.include_router(interview.router)
 
 
 # ==================== 根路径和健康检查 ====================
@@ -226,6 +237,7 @@ async def get_info():
             "rag": True,  # 第 2 阶段 ✅
             "workflow": True,  # 第 3 阶段 ✅
             "deep_research": False,  # 第 4 阶段
+            "interview_assistant": True,
         },
     }
 
@@ -244,4 +256,3 @@ if __name__ == "__main__":
         reload=settings.server_reload,
         log_level=settings.log_level.lower(),
     )
-

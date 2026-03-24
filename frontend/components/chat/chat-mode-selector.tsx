@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Bot, BookOpen, Workflow, Search, Shield } from "lucide-react"
+import { Bot, BookOpen, Workflow, Search, Shield, BriefcaseBusiness } from "lucide-react"
 
 const modeIcons: Record<AgentMode, React.ComponentType<{ className?: string }>> = {
   'basic-agent': Bot,
@@ -17,6 +17,7 @@ const modeIcons: Record<AgentMode, React.ComponentType<{ className?: string }>> 
   'workflow': Workflow,
   'deep-research': Search,
   'guarded': Shield,
+  'interview': BriefcaseBusiness,
 }
 
 interface ChatModeSelectorProps {
@@ -25,7 +26,7 @@ interface ChatModeSelectorProps {
 }
 
 export function ChatModeSelector({ value, onChange }: ChatModeSelectorProps) {
-  const modes: AgentMode[] = ['basic-agent', 'rag', 'workflow', 'deep-research', 'guarded']
+  const modes: AgentMode[] = ['basic-agent', 'rag', 'workflow', 'deep-research', 'guarded', 'interview']
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as AgentMode)}>
@@ -53,4 +54,3 @@ export function ChatModeSelector({ value, onChange }: ChatModeSelectorProps) {
     </Select>
   )
 }
-

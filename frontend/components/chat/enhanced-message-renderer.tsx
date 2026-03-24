@@ -92,8 +92,10 @@ function getDisplayContent(message: EnhancedMessage): string {
     return message.content;
   }
 
-  const toolResult = message.tools?.find(tool => tool.result && tool.result.trim());
-  if (toolResult?.result) {
+  const toolResult = message.tools?.find(
+    (tool) => typeof tool.result === "string" && tool.result.trim()
+  );
+  if (typeof toolResult?.result === "string") {
     return toolResult.result;
   }
 

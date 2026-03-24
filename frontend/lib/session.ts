@@ -140,6 +140,7 @@ export function getModeLabel(mode: AgentMode): string {
     'workflow': '学习工作流',
     'deep-research': '深度研究',
     'guarded': '安全模式',
+    'interview': 'AI 面试助手',
   };
   return labels[mode] || mode;
 }
@@ -154,7 +155,7 @@ export function getModeDescription(mode: AgentMode): string {
     'workflow': 'LangGraph 学习任务工作流',
     'deep-research': 'DeepAgents 深度研究模式',
     'guarded': '带安全过滤的对话模式',
+    'interview': '根据简历和 JD 生成面试准备包',
   };
   return descriptions[mode] || '';
 }
-
