@@ -272,6 +272,13 @@ Don't overuse these hooks! They come with their own overhead. Only use them when
 
 const models = [
   {
+    id: "deepseek-chat",
+    name: "DeepSeek Chat",
+    chef: "DeepSeek",
+    chefSlug: "deepseek",
+    providers: ["deepseek"],
+  },
+  {
     id: "gpt-4o",
     name: "GPT-4o",
     chef: "OpenAI",
@@ -307,6 +314,8 @@ const models = [
     providers: ["google"],
   },
 ];
+
+const modelGroups = Array.from(new Set(models.map((model) => model.chef)));
 
 const suggestions = [
   "What are the latest trends in AI?",
@@ -586,7 +595,7 @@ export const ChatExample = ({ onScrollChange }: { onScrollChange?: (isScrolled: 
                     <ModelSelectorInput placeholder="Search models..." />
                     <ModelSelectorList>
                       <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                      {["OpenAI", "Anthropic", "Google"].map((chef) => (
+                      {modelGroups.map((chef) => (
                         <ModelSelectorGroup key={chef} heading={chef}>
                           {models
                             .filter((m) => m.chef === chef)
@@ -633,4 +642,3 @@ export const ChatExample = ({ onScrollChange }: { onScrollChange?: (isScrolled: 
     </div>
   );
 };
-

@@ -5,8 +5,9 @@
 
 import type { ChatRequest, StreamChunk } from './types';
 
-// 后端 API 基础 URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// 聊天页统一走 Next.js 代理，避免浏览器在远程访问 VPS 时直连 localhost
+const CHAT_API_URL = '/api/chat';
+const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
  * 增强的流式聊天客户端
@@ -48,7 +49,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 export async function* chatStreamEnhanced(
   request: ChatRequest
 ): AsyncGenerator<StreamChunk, void, unknown> {
-  const url = `${API_BASE_URL}/chat/stream`;
+  const url = CHAT_API_URL;
   
   let response: Response;
   
@@ -143,7 +144,7 @@ export async function* chatStreamEnhanced(
  * @returns Promise<ChatResponse>
  */
 export async function chatNonStreaming(request: ChatRequest) {
-  const url = `${API_BASE_URL}/chat`;
+  const url = `${BACKEND_API_URL}/chat`;
   
   const response = await fetch(url, {
     method: 'POST',
@@ -209,7 +210,7 @@ export async function* chatStreamWithRetry(
  * 健康检查
  */
 export async function healthCheck(): Promise<{ status: string; version: string }> {
-  const response = await fetch(`${API_BASE_URL}/health`, {
+  const response = await fetch(`${BACKEND_API_URL}/health`, {
     method: 'GET',
   });
 
@@ -227,7 +228,7 @@ export async function getAvailableModes(): Promise<{
   modes: Record<string, string>;
   default: string;
 }> {
-  const response = await fetch(`${API_BASE_URL}/chat/modes`, {
+  const response = await fetch(`${BACKEND_API_URL}/chat/modes`, {
     method: 'GET',
   });
 
@@ -237,4 +238,3 @@ export async function getAvailableModes(): Promise<{
 
   return response.json();
 }
-

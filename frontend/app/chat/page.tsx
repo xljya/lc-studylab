@@ -1,13 +1,14 @@
 "use client"
 
-import { ChatExample } from "@/components/chat/chat-example"
+import { ChatEnhanced } from "@/components/chat/chat-enhanced"
 import { AppLayout } from "@/components/layout/app-layout"
 
 export default function ChatPage() {
   return (
     <AppLayout>
-      <ChatExample />
+      <div className="h-full">
+        <ChatEnhanced />
+      </div>
     </AppLayout>
   )
 }
-

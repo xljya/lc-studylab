@@ -17,14 +17,28 @@ import { EnhancedMessageRenderer } from './enhanced-message-renderer';
 import {
   PromptInput,
   PromptInputBody,
+  PromptInputButton,
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputTools,
   PromptInputSubmit,
   type PromptInputMessage,
 } from '@/components/ai-elements/prompt-input';
+import {
+  ModelSelector,
+  ModelSelectorContent,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorInput,
+  ModelSelectorItem,
+  ModelSelectorList,
+  ModelSelectorLogo,
+  ModelSelectorName,
+  ModelSelectorTrigger,
+} from '@/components/ai-elements/model-selector';
 import { Suggestions, Suggestion } from '@/components/ai-elements/suggestion';
 import { toast } from 'sonner';
+import { CheckIcon } from 'lucide-react';
 
 export interface ChatEnhancedProps {
   /**
@@ -43,6 +57,15 @@ export interface ChatEnhancedProps {
   onScrollChange?: (isScrolled: boolean) => void;
 }
 
+const AVAILABLE_MODELS = [
+  {
+    id: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    chef: 'DeepSeek',
+    chefSlug: 'deepseek',
+  },
+];
+
 // 建议由模型通过流事件提供，不再使用本地写死或关键词推断
 
 export function ChatEnhanced({
@@ -51,7 +74,11 @@ export function ChatEnhanced({
   onScrollChange,
 }: ChatEnhancedProps) {
   const [text, setText] = React.useState('');
+  const [model, setModel] = React.useState(AVAILABLE_MODELS[0].id);
+  const [modelSelectorOpen, setModelSelectorOpen] = React.useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedModelData =
+    AVAILABLE_MODELS.find((item) => item.id === model) ?? AVAILABLE_MODELS[0];
 
   const {
     messages,
@@ -190,8 +217,45 @@ export function ChatEnhanced({
                 disabled={isStreaming}
               />
             </PromptInputBody>
-            <PromptInputFooter>
+              <PromptInputFooter>
               <PromptInputTools>
+                <ModelSelector
+                  onOpenChange={setModelSelectorOpen}
+                  open={modelSelectorOpen}
+                >
+                  <ModelSelectorTrigger asChild>
+                    <PromptInputButton>
+                      <ModelSelectorLogo provider={selectedModelData.chefSlug} />
+                      <ModelSelectorName>{selectedModelData.name}</ModelSelectorName>
+                    </PromptInputButton>
+                  </ModelSelectorTrigger>
+                  <ModelSelectorContent>
+                    <ModelSelectorInput placeholder="Search models..." />
+                    <ModelSelectorList>
+                      <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                      <ModelSelectorGroup heading="DeepSeek">
+                        {AVAILABLE_MODELS.map((availableModel) => (
+                          <ModelSelectorItem
+                            key={availableModel.id}
+                            onSelect={() => {
+                              setModel(availableModel.id);
+                              setModelSelectorOpen(false);
+                            }}
+                            value={availableModel.id}
+                          >
+                            <ModelSelectorLogo provider={availableModel.chefSlug} />
+                            <ModelSelectorName>{availableModel.name}</ModelSelectorName>
+                            {model === availableModel.id ? (
+                              <CheckIcon className="ml-auto size-4" />
+                            ) : (
+                              <div className="ml-auto size-4" />
+                            )}
+                          </ModelSelectorItem>
+                        ))}
+                      </ModelSelectorGroup>
+                    </ModelSelectorList>
+                  </ModelSelectorContent>
+                </ModelSelector>
                 {isStreaming && (
                   <button
                     type="button"

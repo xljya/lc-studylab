@@ -20,17 +20,50 @@
 - https://reference.langchain.com/python/langchain/agents/
 """
 
+# `typing` 里的这些类型标注，主要作用是帮助人和 IDE 理解“这个变量/参数应该是什么类型”。
+# 你可以把它理解成一种“轻量版接口说明”，类似 Java 方法签名里写参数类型。
 from typing import List, Optional, Dict, Any, Iterator, AsyncIterator, Union, Sequence
+
+# LangChain 的消息类型。
+# 这些类对应对话里的不同角色/消息：
+# - BaseMessage: 所有消息类型的父类
+# - HumanMessage: 用户消息
+# - AIMessage: 模型/Agent 返回的消息
+# - SystemMessage: 系统提示词消息（本文件里当前没有直接使用，但保留导入便于扩展）
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+
+# BaseTool 表示“工具”的基类。
+# 只要某个对象符合 LangChain 的工具接口，就可以交给 Agent 使用。
 from langchain_core.tools import BaseTool
+
+# BaseChatModel 是聊天模型的抽象父类。
+# 你可以把它理解成“所有聊天模型都遵守的一套统一接口”。
 from langchain_core.language_models.chat_models import BaseChatModel
+
+# create_agent 是 LangChain 1.x 里的 Agent 工厂函数。
+# 它负责把“模型 + 工具 + 系统提示词”组装成一个可运行的 Agent。
 from langchain.agents import create_agent  # LangChain V1.0.0 的新 API
 
+# 项目内部的模型工厂函数。
+# `get_chat_model()` 用于创建普通聊天模型实例。
+# `get_streaming_model()` 当前这个文件没有直接使用，但表示项目也支持单独创建流式模型。
 from core.models import get_chat_model, get_streaming_model
+
+# 项目内部的提示词函数：
+# - get_system_prompt: 普通系统提示词
+# - get_prompt_with_tools: 带工具说明的系统提示词
 from core.prompts import get_system_prompt, get_prompt_with_tools
+
+# 项目预置的工具集合。
+# - ALL_TOOLS: 全量工具
+# - BASIC_TOOLS: 基础工具
 from core.tools import ALL_TOOLS, BASIC_TOOLS
+
+# 全局配置和日志工厂。
+# settings 用来读取 .env 中的配置；get_logger 用来创建日志对象。
 from config import settings, get_logger
 
+# 当前模块自己的 logger。
 logger = get_logger(__name__)
 
 
@@ -100,19 +133,28 @@ class BaseAgent:
         参考：
             https://reference.langchain.com/python/langchain/agents/#langchain.agents.create_agent
         """
+        # `__init__` 是 Python 类的构造方法。
+        # 当你写 `agent = BaseAgent(...)` 时，Python 会自动执行这里的初始化逻辑。
+        #
+        # `self` 可以理解成 Java 里的 `this`，表示“当前这个对象实例自己”。
+
         # ==================== 模型初始化 ====================
         # 在 LangChain V1.0.0 中，model 可以是字符串或 BaseChatModel 实例
         if model is None:
-            # 使用默认模型（从配置读取）
-            # create_agent 接受字符串格式，如 "openai:gpt-4o"
-            self.model = f"openai:{settings.openai_model}"
-            logger.info(f"🤖 使用默认模型: {self.model}")
+            # 使用默认模型实例，确保 .env 中加载的 api_key/base_url
+            # 能稳定传递给 create_agent，而不是依赖进程环境变量导出。
+            self.model = get_chat_model(
+                model_name=settings.openai_model,
+                streaming=settings.openai_streaming,
+            )
+            logger.info(f"🤖 使用默认模型实例: {settings.openai_model}")
         elif isinstance(model, str):
-            # 字符串标识符
+            # 如果传入的是字符串，就把它当成模型标识符。
+            # 例如 "openai:gpt-4o" 这种形式。
             self.model = model
             logger.info(f"🤖 使用模型标识符: {model}")
         else:
-            # BaseChatModel 实例
+            # 否则认为你直接传入了一个已经创建好的模型对象。
             self.model = model
             logger.info(f"🤖 使用自定义模型实例: {model.__class__.__name__}")
         
@@ -132,9 +174,10 @@ class BaseAgent:
         
         # ==================== 提示词初始化 ====================
         if system_prompt is None:
-            # 根据模式生成系统提示词
+            # 如果调用方没有自己传 system_prompt，就由项目根据 prompt_mode 自动生成。
             if self.tools:
-                # 如果有工具，使用包含工具说明的提示词
+                # 如果 Agent 配了工具，就生成“带工具说明”的提示词。
+                # 这样模型才知道有哪些工具、什么时候该调用。
                 self.system_prompt = get_prompt_with_tools(mode=prompt_mode)
                 logger.info(f"📝 使用带工具说明的系统提示词 (模式: {prompt_mode})")
             else:
@@ -156,6 +199,10 @@ class BaseAgent:
             
             # 调用 create_agent
             # 参考：https://reference.langchain.com/python/langchain/agents/#langchain.agents.create_agent
+            #
+            # 这里得到的 `self.graph` 可以暂时理解成：
+            # “一个已经组装好的 Agent 运行引擎”。
+            # 后面所有 `invoke()`、`stream()` 最终都会转发给它。
             self.graph = create_agent(
                 model=self.model,
                 tools=self.tools if self.tools else None,  # None 或空列表表示无工具
@@ -202,18 +249,19 @@ class BaseAgent:
         logger.info(f"🚀 执行 Agent 调用: {input_text[:50]}...")
         
         try:
-            # 准备消息列表
+            # 准备消息列表。
+            # 这里的 messages 可以理解成“这次对话上下文”。
             # LangChain V1.0.0 的 create_agent 使用 {"messages": [...]} 格式
             messages = []
             
-            # 添加历史消息
+            # 如果之前已经有聊天记录，就先把历史消息放进去。
             if chat_history:
                 messages.extend(chat_history)
             
-            # 添加当前用户消息
+            # 然后把这次新的用户输入包装成 HumanMessage。
             messages.append(HumanMessage(content=input_text))
             
-            # 准备输入
+            # 最终拼成 create_agent 需要的输入格式。
             graph_input = {"messages": messages}
             graph_input.update(kwargs)
             
@@ -225,7 +273,8 @@ class BaseAgent:
             # result 是一个包含 "messages" 键的字典
             output_messages = result.get("messages", [])
             
-            # 找到最后一条 AI 消息
+            # 倒序查找最后一条 AIMessage，
+            # 因为最终结果里可能同时包含用户消息、工具消息、AI 消息等多种内容。
             ai_response = ""
             for msg in reversed(output_messages):
                 if isinstance(msg, AIMessage):
@@ -278,7 +327,8 @@ class BaseAgent:
         logger.info(f"🌊 执行 Agent 流式调用: {input_text[:50]}...")
         
         try:
-            # 准备消息列表
+            # 这里和 invoke() 的前半段基本一样：
+            # 先整理聊天历史，再拼出 graph_input。
             messages = []
             if chat_history:
                 messages.extend(chat_history)
@@ -288,12 +338,14 @@ class BaseAgent:
             graph_input = {"messages": messages}
             graph_input.update(kwargs)
             
-            # 流式执行 Graph
+            # 流式执行 Graph。
+            # 和 invoke() 一次性拿完整结果不同，stream() 会一段一段地产出内容。
             # CompiledStateGraph 的 stream 方法支持多种模式
             for chunk in self.graph.stream(graph_input, stream_mode=stream_mode):
                 # 根据 stream_mode 处理不同的输出格式
                 if stream_mode == "messages":
-                    # messages 模式：chunk 是 (message, metadata) 元组
+                    # messages 模式：chunk 常见是 (message, metadata) 元组。
+                    # tuple 可以理解成一个固定长度的小容器。
                     if isinstance(chunk, tuple) and len(chunk) == 2:
                         message, metadata = chunk
                         if isinstance(message, AIMessage) and message.content:
@@ -343,6 +395,8 @@ class BaseAgent:
             >>> response = await agent.ainvoke("你好")
             >>> print(response)
         """
+        # `async def` 表示“异步函数”。
+        # 这类函数通常要配合 `await` 使用，适合 I/O 较多的场景。
         logger.info(f"🚀 执行 Agent 异步调用: {input_text[:50]}...")
         
         try:
@@ -356,7 +410,8 @@ class BaseAgent:
             graph_input = {"messages": messages}
             graph_input.update(kwargs)
             
-            # 异步执行 Graph
+            # 异步执行 Graph。
+            # `await` 可以理解成“先等待这个异步任务完成，再继续往下执行”。
             result = await self.graph.ainvoke(graph_input, config=config)
             
             # 提取最后一条 AI 消息
@@ -399,6 +454,7 @@ class BaseAgent:
             >>> async for chunk in agent.astream("讲个笑话"):
             ...     print(chunk, end="", flush=True)
         """
+        # astream = async stream，表示“异步 + 流式”。
         logger.info(f"🌊 执行 Agent 异步流式调用: {input_text[:50]}...")
         
         try:
@@ -412,7 +468,8 @@ class BaseAgent:
             graph_input = {"messages": messages}
             graph_input.update(kwargs)
             
-            # 异步流式执行 Graph
+            # `async for` 用来遍历异步迭代器，
+            # 类似普通 `for`，只是每次取值都可能需要等待。
             async for chunk in self.graph.astream(graph_input, stream_mode=stream_mode):
                 # 根据 stream_mode 处理不同的输出格式
                 if stream_mode == "messages":
@@ -478,6 +535,9 @@ def create_base_agent(
     参考：
         https://docs.langchain.com/oss/python/langchain/agents
     """
+    # 这个函数本质上是对 `BaseAgent(...)` 的一层薄封装。
+    # 好处是调用者不用关心类名，直接通过“工厂函数”拿一个默认 Agent 即可。
+    # 这和很多 Java 项目里提供 `createXxx()` / `buildXxx()` 的写法是一个思路。
     logger.info(f"🏭 创建 Base Agent (mode={prompt_mode}, debug={debug})")
     
     return BaseAgent(
@@ -487,4 +547,3 @@ def create_base_agent(
         debug=debug,
         **kwargs,
     )
-

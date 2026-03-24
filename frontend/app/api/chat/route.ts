@@ -1,11 +1,14 @@
 /**
  * Chat API Route Handler
- * 对接 Python 后端的 /chat 接口，支持流式输出
+ * 对接 Python 后端的 /chat/stream 接口，支持增强 SSE 流式输出
  */
 
 import { NextRequest } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BACKEND_URL =
+  process.env.BACKEND_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
 
 export const runtime = 'edge'; // 使用 Edge Runtime 以支持流式响应
 
@@ -13,16 +16,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    // 转发请求到 Python 后端
-    const response = await fetch(`${BACKEND_URL}/chat`, {
+    // 转发请求到 Python 后端的 SSE 接口
+    const response = await fetch(`${BACKEND_URL}/chat/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        ...body,
-        stream: true, // 强制启用流式输出
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -57,4 +57,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

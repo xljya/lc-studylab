@@ -37,8 +37,15 @@ TAVILY_API_KEY=your-tavily-key
 # 可选：高德天气 API Key
 AMAP_KEY=your-amap-key
 
-# 前端 API 地址（Docker 内部会自动使用服务名）
-NEXT_PUBLIC_API_URL=http://backend:8000
+# 可选：宿主机端口映射（默认前端 3000，后端 8001）
+FRONTEND_HOST_PORT=3000
+BACKEND_HOST_PORT=8001
+
+# 可选：浏览器访问后端的地址
+NEXT_PUBLIC_API_URL=http://localhost:8001
+
+# 可选：前端容器内部访问后端的地址
+BACKEND_INTERNAL_URL=http://backend:8000
 ```
 
 ### 3. 一键启动
@@ -76,10 +83,10 @@ docker-compose logs -f frontend
 启动成功后，可以通过以下地址访问：
 
 - **前端应用**: http://localhost:3000
-- **后端 API**: http://localhost:8000
-- **API 文档 (Swagger)**: http://localhost:8000/docs
-- **API 文档 (ReDoc)**: http://localhost:8000/redoc
-- **健康检查**: http://localhost:8000/health
+- **后端 API**: http://localhost:8001
+- **API 文档 (Swagger)**: http://localhost:8001/docs
+- **API 文档 (ReDoc)**: http://localhost:8001/redoc
+- **健康检查**: http://localhost:8001/health
 
 ## 常用命令
 
@@ -161,20 +168,23 @@ docker-compose restart frontend
 
 | 变量名 | 说明 | 必填 | 默认值 |
 |--------|------|------|--------|
-| `NEXT_PUBLIC_API_URL` | 后端 API 地址 | 否 | `http://backend:8000` |
+| `NEXT_PUBLIC_API_URL` | 浏览器访问的后端 API 地址 | 否 | `http://localhost:8001` |
+| `BACKEND_INTERNAL_URL` | 前端容器内部访问后端的地址 | 否 | `http://backend:8000` |
+| `FRONTEND_HOST_PORT` | 前端映射到宿主机的端口 | 否 | `3000` |
+| `BACKEND_HOST_PORT` | 后端映射到宿主机的端口 | 否 | `8001` |
 
-**注意**：在 Docker Compose 环境中，前端使用 `http://backend:8000` 访问后端（服务名）。如果单独部署，请修改为实际的后端地址。
+**注意**：在 Docker Compose 环境中，浏览器应通过 `http://localhost:8001` 访问后端，前端容器内部通过 `http://backend:8000` 访问后端服务名。如果你修改了宿主机端口，也要同步调整 `NEXT_PUBLIC_API_URL`。
 
 ## 故障排除
 
 ### 端口被占用
 
-如果 8000 或 3000 端口被占用，可以修改 `docker-compose.yml` 中的端口映射：
+默认情况下，本项目使用宿主机端口 `3000` 和 `8001`。如果这些端口被占用，可以修改 `.env` 中的端口变量：
 
-```yaml
-ports:
-  - "8001:8000"  # 将后端映射到 8001
-  - "3001:3000"  # 将前端映射到 3001
+```env
+BACKEND_HOST_PORT=8002
+FRONTEND_HOST_PORT=3001
+NEXT_PUBLIC_API_URL=http://localhost:8002
 ```
 
 ### 构建失败
@@ -213,13 +223,14 @@ docker-compose ps
 
 ### 前端无法连接后端
 
-1. 确保 `NEXT_PUBLIC_API_URL` 在 Docker 环境中设置为 `http://backend:8000`
-2. 检查后端服务是否正常运行：
+1. 确保 `NEXT_PUBLIC_API_URL` 在 Docker 环境中设置为浏览器可访问的地址，例如 `http://localhost:8001`
+2. 确保 `BACKEND_INTERNAL_URL` 保持为 `http://backend:8000`
+3. 检查后端服务是否正常运行：
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
-3. 检查网络连接：
+4. 检查网络连接：
 ```bash
 docker-compose exec frontend ping backend
 ```
@@ -360,4 +371,3 @@ DOCKER_BUILDKIT=1 docker-compose build
 - [Docker Compose 文档](https://docs.docker.com/compose/)
 - [Next.js Docker 部署](https://nextjs.org/docs/deployment#docker-image)
 - [FastAPI 部署](https://fastapi.tiangolo.com/deployment/)
-
